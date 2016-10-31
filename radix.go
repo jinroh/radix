@@ -1,11 +1,13 @@
 package radix
 
+import "bytes"
+
 type tnode struct {
 	v    interface{} // value (if leaf node)
 	mask byte
 	l    *tnode // left
 	r    *tnode // right
-	k    []byte // key piece
+	k    string // key piece
 }
 
 // Tree holds a root node of a radix-2 tree.
@@ -20,7 +22,7 @@ func New() *Tree {
 
 // Get does a lookup of the given key and returns the node value that
 // match the given key.
-func (t *Tree) Get(key []byte) (interface{}, bool) {
+func (t *Tree) Get(key string) (interface{}, bool) {
 	if match, node := t.lookup(key); node != nil && match {
 		return node.v, true
 	}
@@ -30,14 +32,14 @@ func (t *Tree) Get(key []byte) (interface{}, bool) {
 // Closeup returns a new view of the tree from the prefix passed as a
 // key. If the prefix does not match any prefix of an indexed value of
 // the tree, it returns nil.
-func (t *Tree) Closeup(key []byte) *Tree {
+func (t *Tree) Closeup(key string) *Tree {
 	if _, node := t.lookup(key); node != nil {
 		return &Tree{root: node}
 	}
 	return nil
 }
 
-func (t *Tree) lookup(key []byte) (match bool, node *tnode) {
+func (t *Tree) lookup(key string) (match bool, node *tnode) {
 	node = t.root
 
 	for {
@@ -63,8 +65,9 @@ func (t *Tree) lookup(key []byte) (match bool, node *tnode) {
 	}
 }
 
-// Insert adds a new value in the tree at the given key.
-func (t *Tree) Insert(key []byte, v interface{}) {
+// Insert adds a new value in the tree at the given key. Returns a
+// boolean true iff the key already existed and has been replaced.
+func (t *Tree) Insert(key string, v interface{}) (replaced bool) {
 	var node *tnode
 	pnode := &t.root
 
@@ -105,6 +108,7 @@ func (t *Tree) Insert(key []byte, v interface{}) {
 			}
 
 			*pnode, node = splitnode, splitnode
+			replaced = true
 		}
 
 		keylen := len(key) - len(node.k)
@@ -113,6 +117,7 @@ func (t *Tree) Insert(key []byte, v interface{}) {
 			return
 		}
 
+		replaced = false
 		key = key[len(node.k):]
 		if node.mask == 0 || key[0]&node.mask > 0 {
 			pnode = &node.r
@@ -125,45 +130,45 @@ func (t *Tree) Insert(key []byte, v interface{}) {
 // Foreach is used to iterates of the values of the tree. For each
 // value, the given callback is called with the value and key as
 // parameters.
-func (t *Tree) Foreach(cb func(interface{}, []byte) error) error {
-	var key []byte
-	return foreach(t.root, key, cb)
+func (t *Tree) Foreach(cb func(interface{}, string) error) error {
+	var keybuf bytes.Buffer
+	return foreach(t.root, keybuf, cb)
 }
 
-func (t *Tree) forall(cb func(*tnode, []byte) error) error {
-	var key []byte
-	return forall(t.root, key, cb)
+func (t *Tree) forall(cb func(*tnode, string) error) error {
+	var keybuf bytes.Buffer
+	return forall(t.root, keybuf, cb)
 }
 
-func foreach(node *tnode, key []byte, cb func(interface{}, []byte) error) error {
+func foreach(node *tnode, keybuf bytes.Buffer, cb func(interface{}, string) error) error {
 	if node == nil {
 		return nil
 	}
-	key = append(key, node.k...)
+	keybuf.WriteString(node.k)
 	if node.v != nil {
-		if err := cb(node.v, key); err != nil {
+		if err := cb(node.v, keybuf.String()); err != nil {
 			return err
 		}
 	}
-	foreach(node.l, key, cb)
-	foreach(node.r, key, cb)
+	foreach(node.l, keybuf, cb)
+	foreach(node.r, keybuf, cb)
 	return nil
 }
 
-func forall(node *tnode, key []byte, cb func(*tnode, []byte) error) error {
+func forall(node *tnode, keybuf bytes.Buffer, cb func(*tnode, string) error) error {
 	if node == nil {
 		return nil
 	}
-	key = append(key, node.k...)
-	if err := cb(node, key); err != nil {
+	keybuf.WriteString(node.k)
+	if err := cb(node, keybuf.String()); err != nil {
 		return err
 	}
-	forall(node.l, key, cb)
-	forall(node.r, key, cb)
+	forall(node.l, keybuf, cb)
+	forall(node.r, keybuf, cb)
 	return nil
 }
 
-func keyMatch(keya, keyb []byte) (bool, int, byte) {
+func keyMatch(keya, keyb string) (bool, int, byte) {
 	keyalen := len(keya)
 	keyblen := len(keyb)
 	minlen := min(keyalen, keyblen)
