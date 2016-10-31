@@ -67,19 +67,21 @@ func (t *Tree) lookup(key string) (match bool, node *tnode) {
 
 // Insert adds a new value in the tree at the given key. Returns a
 // boolean true iff the key already existed and has been replaced.
-func (t *Tree) Insert(key string, v interface{}) (replaced bool) {
+func (t *Tree) Insert(key string, v interface{}) (interface{}, bool) {
 	var node *tnode
 	pnode := &t.root
+	repld := true
 
 	for {
 		if *pnode == nil {
+			repld = false
 			*pnode = &tnode{k: key}
 		}
 
 		node = *pnode
-
 		match, splitpos, diff := keyMatch(key, node.k)
 		if !match || len(key) < len(node.k) {
+			repld = false
 			mask := calcMask(diff)
 
 			splitkey := key[:splitpos]
@@ -108,16 +110,14 @@ func (t *Tree) Insert(key string, v interface{}) (replaced bool) {
 			}
 
 			*pnode, node = splitnode, splitnode
-			replaced = true
 		}
 
 		keylen := len(key) - len(node.k)
 		if keylen == 0 {
 			node.v = v
-			return
+			return v, repld
 		}
 
-		replaced = false
 		key = key[len(node.k):]
 		if node.mask == 0 || key[0]&node.mask > 0 {
 			pnode = &node.r

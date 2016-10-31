@@ -29,8 +29,8 @@ func TestSimple(t *testing.T) {
 
 	tree.Insert("/", "root")
 	tree.Insert("/aa", "aa")
-	tree.Insert("/folder/", "folder1")
-	tree.Insert("/folder/", "folder1-")
+	_, replaced1 := tree.Insert("/folder/", "folder1")
+	_, replaced2 := tree.Insert("/folder/", "folder1-")
 	tree.Insert("/folder/file1", "file1")
 	tree.Insert("/folder/file2", "file2")
 	tree.Insert("/folder/file3", "file3")
@@ -58,6 +58,12 @@ func TestSimple(t *testing.T) {
 	}
 	if v, ok := tree.Get("/folder/"); ok && v.(string) != "folder1-" {
 		t.Fatal("folder1-")
+	}
+	if replaced1 {
+		t.Fatal("was not replaced")
+	}
+	if !replaced2 {
+		t.Fatal("was replaced")
 	}
 	if v, ok := tree.Get("/folder/file1"); ok && v.(string) != "file1" {
 		t.Fatal("file1")
@@ -136,7 +142,7 @@ func BenchmarkRandomInsertSelf(b *testing.B) {
 	tree := New()
 	for n := 0; n < b.N; n++ {
 		k := randString(15, "ab", true)
-		replaced = tree.Insert(k, k)
+		_, replaced = tree.Insert(k, k)
 	}
 	result = replaced
 }
@@ -184,23 +190,27 @@ func BenchmarkFilesGoRadix(b *testing.B) {
 }
 
 func BenchmarkInsertFilesSelf(b *testing.B) {
+	var replaced bool
 	var tree *Tree
 	for n := 0; n < b.N; n++ {
 		tree = New()
 		for k, v := range pathsBench {
-			tree.Insert(k, v)
+			_, replaced = tree.Insert(k, v)
 		}
 	}
+	result = replaced
 }
 
 func BenchmarkInsertFilesGoRadix(b *testing.B) {
+	var replaced bool
 	var tree *goradix.Tree
 	for n := 0; n < b.N; n++ {
 		tree = goradix.New()
 		for k, v := range pathsBench {
-			tree.Insert(k, v)
+			_, replaced = tree.Insert(k, v)
 		}
 	}
+	result = replaced
 }
 
 func TestMain(m *testing.M) {
