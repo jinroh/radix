@@ -169,17 +169,7 @@ func forall(node *tnode, keybuf bytes.Buffer, cb func(*tnode, string) error) err
 }
 
 func keyMatch(keya, keyb string) (bool, int, byte) {
-	keyalen := len(keya)
-	keyblen := len(keyb)
-	minlen := min(keyalen, keyblen)
-
-	for i := 0; i < minlen; i++ {
-		if d := keya[i] ^ keyb[i]; d != 0 {
-			return false, i, d
-		}
-	}
-
-	return true, minlen, 0
+	return xorStrings(keya, keyb)
 }
 
 func calcMask(d byte) (mask byte) {
@@ -190,11 +180,4 @@ func calcMask(d byte) (mask byte) {
 		mask = mask >> 1
 	}
 	return
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

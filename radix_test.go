@@ -141,7 +141,7 @@ func BenchmarkRandomInsertSelf(b *testing.B) {
 	var replaced bool
 	tree := New()
 	for n := 0; n < b.N; n++ {
-		k := randString(15, "ab", true)
+		k := randString(100, "ab", true)
 		_, replaced = tree.Insert(k, k)
 	}
 	result = replaced
@@ -151,7 +151,7 @@ func BenchmarkRandomInsertGoRadix(b *testing.B) {
 	var replaced bool
 	tree := goradix.New()
 	for n := 0; n < b.N; n++ {
-		k := randString(15, "ab", true)
+		k := randString(100, "ab", true)
 		_, replaced = tree.Insert(k, k)
 	}
 	result = replaced
@@ -164,7 +164,7 @@ func BenchmarkFilesSelf(b *testing.B) {
 		for k, v := range pathsBench {
 			tree.Insert(k, v)
 		}
-		for k, _ := range pathsBench {
+		for k := range pathsBench {
 			v, ok := tree.Get(k)
 			if !ok || v == nil {
 				os.Exit(1)
@@ -180,7 +180,7 @@ func BenchmarkFilesGoRadix(b *testing.B) {
 		for k, v := range pathsBench {
 			tree.Insert(k, v)
 		}
-		for k, _ := range pathsBench {
+		for k := range pathsBench {
 			v, ok := tree.Get(k)
 			if !ok || v == nil {
 				os.Exit(1)
