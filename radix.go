@@ -47,7 +47,7 @@ func (t *Tree) lookup(key string) (match bool, node *tnode) {
 			return false, nil
 		}
 
-		if match, _, _ := keyMatch(key, node.k); !match {
+		if !keyMatch(node.k, key) {
 			return false, nil
 		}
 
@@ -79,7 +79,7 @@ func (t *Tree) Insert(key string, v interface{}) (interface{}, bool) {
 		}
 
 		node = *pnode
-		match, splitpos, diff := keyMatch(key, node.k)
+		match, splitpos, diff := xorStrings(key, node.k)
 		if !match || len(key) < len(node.k) {
 			repld = false
 			mask := calcMask(diff)
@@ -168,8 +168,12 @@ func forall(node *tnode, keybuf bytes.Buffer, cb func(*tnode, string) error) err
 	return nil
 }
 
-func keyMatch(keya, keyb string) (bool, int, byte) {
-	return xorStrings(keya, keyb)
+func keyMatch(keya, keyb string) (match bool) {
+	n := len(keya)
+	if len(keyb) < n {
+		n = len(keyb)
+	}
+	return keya[0:n] == keyb[0:n]
 }
 
 func calcMask(d byte) (mask byte) {
