@@ -79,9 +79,10 @@ func (t *Tree) Insert(key string, v interface{}) (interface{}, bool) {
 		}
 
 		node = *pnode
-		match, splitpos, diff := xorStrings(key, node.k)
-		if !match || len(key) < len(node.k) {
+		if len(key) < len(node.k) || !keyMatch(node.k, key) {
 			repld = false
+
+			splitpos, diff := xorStrings(node.k, key)
 			mask := calcMask(diff)
 
 			splitkey := key[:splitpos]

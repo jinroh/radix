@@ -12,7 +12,7 @@ const supportsUnaligned = runtime.GOARCH == "386" || runtime.GOARCH == "amd64" |
 
 // fastXORStrings xors in bulk. It only works on architectures that
 // support read.
-func fastXORStrings(a, b string) (bool, int, byte) {
+func fastXORStrings(a, b string) (int, byte) {
 	n := len(a)
 	if len(b) < n {
 		n = len(b)
@@ -28,21 +28,21 @@ func fastXORStrings(a, b string) (bool, int, byte) {
 				for j = 0; dw&0xFF == 0; j++ {
 					dw = dw >> 8
 				}
-				return false, i*wordSize + j, byte(dw)
+				return i*wordSize + j, byte(dw)
 			}
 		}
 	}
 
 	for i := (n - n%wordSize); i < n; i++ {
 		if d := a[i] ^ b[i]; d != 0 {
-			return false, i, d
+			return i, d
 		}
 	}
 
-	return true, n, 0
+	return n, 0
 }
 
-func safeXORStrings(a, b string) (bool, int, byte) {
+func safeXORStrings(a, b string) (int, byte) {
 	n := len(a)
 	if len(b) < n {
 		n = len(b)
@@ -50,16 +50,16 @@ func safeXORStrings(a, b string) (bool, int, byte) {
 
 	for i := 0; i < n; i++ {
 		if d := a[i] ^ b[i]; d != 0 {
-			return false, i, d
+			return i, d
 		}
 	}
 
-	return true, n, 0
+	return n, 0
 }
 
 // xorBytes xors the bytes in a and b. The destination is assumed to
 // have enough space. Returns the number of bytes xor'd.
-func xorStrings(a, b string) (bool, int, byte) {
+func xorStrings(a, b string) (int, byte) {
 	if supportsUnaligned {
 		return fastXORStrings(a, b)
 	}
