@@ -15,7 +15,7 @@ type Tree struct {
 	root *tnode
 }
 
-// NewTree returns a new tree handler.
+// New returns a new tree handler.
 func New() *Tree {
 	return &Tree{}
 }
@@ -23,7 +23,7 @@ func New() *Tree {
 // Get does a lookup of the given key and returns the node value that
 // match the given key.
 func (t *Tree) Get(key string) (interface{}, bool) {
-	if match, node := t.lookup(key); node != nil && match {
+	if match, node, _, _ := t.lookup(key); node != nil && match {
 		return node.v, true
 	}
 	return nil, false
@@ -33,30 +33,36 @@ func (t *Tree) Get(key string) (interface{}, bool) {
 // key. If the prefix does not match any prefix of an indexed value of
 // the tree, it returns nil.
 func (t *Tree) Closeup(key string) *Tree {
-	if _, node := t.lookup(key); node != nil {
+	if _, node, _, _ := t.lookup(key); node != nil {
 		return &Tree{root: node}
 	}
 	return nil
 }
 
-func (t *Tree) lookup(key string) (match bool, node *tnode) {
+func (t *Tree) lookup(key string) (match bool, node *tnode, parent *tnode, gparent *tnode) {
 	node = t.root
 
 	for {
 		if node == nil {
-			return false, nil
+			return
 		}
 
-		if !keyMatch(node.k, key) {
-			return false, nil
+		if node.k != "" {
+			if !keyMatch(node.k, key) {
+				return
+			}
+
+			keylen := len(key) - len(node.k)
+			if keylen <= 0 {
+				match = keylen == 0
+				return
+			}
+
+			key = key[len(node.k):]
 		}
 
-		keylen := len(key) - len(node.k)
-		if keylen <= 0 {
-			return keylen == 0, node
-		}
+		parent, gparent = node, parent
 
-		key = key[len(node.k):]
 		if node.mask == 0 || key[0]&node.mask > 0 {
 			node = node.r
 		} else {
@@ -79,7 +85,7 @@ func (t *Tree) Insert(key string, v interface{}) (interface{}, bool) {
 		}
 
 		node = *pnode
-		if len(key) < len(node.k) || !keyMatch(node.k, key) {
+		if node.k != "" && (len(key) < len(node.k) || !keyMatch(node.k, key)) {
 			repld = false
 
 			splitpos, diff := xorStrings(node.k, key)
@@ -113,19 +119,96 @@ func (t *Tree) Insert(key string, v interface{}) (interface{}, bool) {
 			*pnode, node = splitnode, splitnode
 		}
 
-		keylen := len(key) - len(node.k)
+		curlen := len(node.k)
+		keylen := len(key) - curlen
 		if keylen == 0 {
 			node.v = v
 			return v, repld
 		}
 
-		key = key[len(node.k):]
+		if curlen > 0 {
+			key = key[curlen:]
+		}
+
 		if node.mask == 0 || key[0]&node.mask > 0 {
 			pnode = &node.r
 		} else {
 			pnode = &node.l
 		}
 	}
+}
+
+// Remove removes the node at the given key.
+func (t *Tree) Remove(key string) (interface{}, bool) {
+	match, node, parent, gparent := t.lookup(key)
+	if !match {
+		return nil, false
+	}
+
+	// root node
+	if parent == nil {
+		v := node.v
+		if node.l == nil && node.r == nil {
+			t.root = nil
+		} else {
+			node.v = nil
+		}
+		return v, true
+	}
+
+	return t.rm(node, parent, gparent)
+}
+
+// RemoveBranch remove all elements of the tree starting with the
+// given key.
+func (t *Tree) RemoveBranch(key string) bool {
+	_, node, parent, gparent := t.lookup(key)
+	if node == nil {
+		return false
+	}
+
+	// root node
+	if parent == nil {
+		t.root = nil
+		return true
+	}
+
+	_, ok := t.rm(node, parent, gparent)
+	return ok
+}
+
+func (t *Tree) rm(node, parent, gparent *tnode) (interface{}, bool) {
+	v := node.v
+
+	if parent.l == node {
+		parent.l = nil
+	} else {
+		parent.r = nil
+	}
+
+	// direct parent has value or its parent is root so we can not merge
+	// anything
+	if parent.v != nil || gparent == nil {
+		return v, true
+	}
+
+	if parent.l != nil {
+		node = parent.l
+	} else {
+		node = parent.r
+	}
+
+	if node != nil {
+		node.k = parent.k + node.k
+	}
+
+	if gparent.l == parent {
+		gparent.l = node
+	} else {
+		gparent.r = node
+	}
+
+	return v, true
 }
 
 // Foreach is used to iterates of the values of the tree. For each

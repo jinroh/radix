@@ -118,6 +118,63 @@ func TestRandomString(t *testing.T) {
 	}
 }
 
+func TestRemove(t *testing.T) {
+	tree := New()
+
+	tree.Insert("/", "root")
+	tree.Insert("/foo", "foo")
+
+	printTree(tree)
+
+	// a, _ := tree3.Get("/foo")
+	// b, _ := tree3.Get("/bar")
+	// fmt.Println(a, b)
+
+	v, ok := tree.Remove("/")
+	fmt.Println(v, ok)
+	printTree(tree)
+
+	tree.Insert("/", "root")
+	tree.Insert("/bar", "bar")
+	printTree(tree)
+
+	tree.Remove("/bar")
+	printTree(tree)
+
+	tree.Insert("/a", "a")
+	tree.Insert("/b", "b")
+	tree.Insert("/c", "c")
+	tree.Insert("/d", "d")
+	tree.Insert("/e", "d")
+	tree.Insert("/f", "d")
+	printTree(tree)
+
+	tree.Remove("/a")
+	tree.Remove("/d")
+	printTree(tree)
+
+	tree.Insert("/foo", "foo")
+	tree.Insert("/foo/a", "fooa")
+	tree.Insert("/foo/b", "foob")
+	tree.Insert("/foo/c", "fooc")
+	tree.Insert("/foo/c/d", "foocd")
+	tree.Insert("/foo/c/e", "fooce")
+	tree.Insert("/foo/c/f", "foocf")
+
+	printTree(tree)
+
+	tree.RemoveBranch("/foo/")
+	printTree(tree)
+}
+
+func printTree(tree *Tree) {
+	tree.forall(func(n *tnode, k string) error {
+		fmt.Println(k, n.k, n.l == nil, n.r == nil, n.v)
+		return nil
+	})
+	fmt.Println()
+}
+
 func TestCloseup(t *testing.T) {
 	tree := New()
 
