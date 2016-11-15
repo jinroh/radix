@@ -49,7 +49,7 @@ func (t *Tree) lookup(key string) (match bool, node *tnode, parent *tnode, gpare
 
 		if node.k != "" {
 			if !keyMatch(node.k, key) {
-				return
+				return false, nil, parent, gparent
 			}
 
 			keylen := len(key) - len(node.k)
