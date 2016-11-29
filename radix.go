@@ -41,23 +41,24 @@ func (t *Tree) Closeup(key string) *Tree {
 
 func (t *Tree) lookup(key string) (match bool, node *tnode, parent *tnode, gparent *tnode) {
 	node = t.root
-
 	for {
 		if node == nil {
 			return
 		}
 
-		if node.k != "" {
-			if !keyMatch(node.k, key) {
-				return false, nil, parent, gparent
-			}
+		curlen := len(node.k)
 
-			keylen := len(key) - len(node.k)
-			if keylen <= 0 {
-				match = keylen == 0
-				return
-			}
+		if curlen > 0 && !keyMatch(node.k, key) {
+			return false, nil, parent, gparent
+		}
 
+		keylen := len(key) - curlen
+		if keylen <= 0 {
+			match = keylen == 0
+			return
+		}
+
+		if curlen > 0 {
 			key = key[len(node.k):]
 		}
 
@@ -145,39 +146,46 @@ func (t *Tree) Remove(key string) (interface{}, bool) {
 		return nil, false
 	}
 
+	var v interface{}
+
 	// root node
 	if parent == nil {
-		v := node.v
+		v = node.v
 		if node.l == nil && node.r == nil {
 			t.root = nil
 		} else {
 			node.v = nil
 		}
-		return v, true
+	} else {
+		v = t.rm(node, parent, gparent)
 	}
 
-	return t.rm(node, parent, gparent)
+	return v, true
 }
 
 // RemoveBranch remove all elements of the tree starting with the
 // given key.
-func (t *Tree) RemoveBranch(key string) bool {
+func (t *Tree) RemoveBranch(key string) (*Tree, bool) {
 	_, node, parent, gparent := t.lookup(key)
 	if node == nil {
-		return false
+		return nil, false
 	}
+
+	var closeup *Tree
 
 	// root node
 	if parent == nil {
 		t.root = nil
-		return true
+		closeup = t
+	} else {
+		t.rm(node, parent, gparent)
+		closeup = &Tree{root: node}
 	}
 
-	_, ok := t.rm(node, parent, gparent)
-	return ok
+	return closeup, true
 }
 
-func (t *Tree) rm(node, parent, gparent *tnode) (interface{}, bool) {
+func (t *Tree) rm(node, parent, gparent *tnode) interface{} {
 	v := node.v
 
 	if parent.l == node {
@@ -189,7 +197,7 @@ func (t *Tree) rm(node, parent, gparent *tnode) (interface{}, bool) {
 	// direct parent has value or its parent is root so we can not merge
 	// anything
 	if parent.v != nil || gparent == nil {
-		return v, true
+		return v
 	}
 
 	if parent.l != nil {
@@ -208,7 +216,7 @@ func (t *Tree) rm(node, parent, gparent *tnode) (interface{}, bool) {
 		gparent.r = node
 	}
 
-	return v, true
+	return v
 }
 
 // Foreach is used to iterates of the values of the tree. For each
